@@ -83,7 +83,7 @@ def train():
     if not lines:
         print("[-] No valid lines. Skipping.")
         return
-    dataset = Dataset.from_dict({"text": lines[:200]})
+    dataset = Dataset.from_dict({"text": lines[:50]})
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenizer.pad_token = tokenizer.eos_token
