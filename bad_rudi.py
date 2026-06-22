@@ -70,7 +70,7 @@ def scrape_twitter():
     except Exception as e:
         print("[-] Twitter error:", e)
 
-# ----------------- TRAINING -----------------
+# ----------------- TRAINING (FIXED) -----------------
 def train():
     print("[+] Training LoRA...")
     if not os.path.exists(DATA_FILE) or os.path.getsize(DATA_FILE) < 100:
@@ -83,7 +83,7 @@ def train():
     if not lines:
         print("[-] No valid lines. Skipping.")
         return
-    dataset = Dataset.from_dict({"text": lines[:500]})
+    dataset = Dataset.from_dict({"text": lines[:200]})
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenizer.pad_token = tokenizer.eos_token
@@ -92,9 +92,14 @@ def train():
         return tokenizer(x["text"], truncation=True, padding="max_length", max_length=256)
 
     dataset = dataset.map(tokenize, batched=True)
+    dataset = dataset.remove_columns(["text"])
 
     bnb_config = BitsAndBytesConfig(load_in_4bit=True)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, quantization_config=bnb_config, device_map="auto")
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_NAME,
+        quantization_config=bnb_config,
+        device_map="auto"
+    )
 
     lora = LoraConfig(
         r=LORA_RANK,
@@ -108,11 +113,18 @@ def train():
     args = TrainingArguments(
         output_dir=MODEL_DIR,
         per_device_train_batch_size=1,
-        num_train_epochs=3,
+        num_train_epochs=2,
         save_steps=50,
         logging_steps=10,
+        remove_unused_columns=False,
     )
-    trainer = Trainer(model=model, args=args, train_dataset=dataset)
+
+    trainer = Trainer(
+        model=model,
+        args=args,
+        train_dataset=dataset,
+        tokenizer=tokenizer,
+    )
     trainer.train()
     model.save_pretrained(MODEL_DIR)
     tokenizer.save_pretrained(MODEL_DIR)
