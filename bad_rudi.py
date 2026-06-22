@@ -110,6 +110,11 @@ def train():
     model = get_peft_model(model, lora)
 
     from transformers import TrainingArguments, Trainer
+
+    # Data collator for causal LM
+    from transformers import DataCollatorForLanguageModeling
+    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
     args = TrainingArguments(
         output_dir=MODEL_DIR,
         per_device_train_batch_size=1,
@@ -123,7 +128,7 @@ def train():
         model=model,
         args=args,
         train_dataset=dataset,
-        tokenizer=tokenizer,
+        data_collator=data_collator,
     )
     trainer.train()
     model.save_pretrained(MODEL_DIR)
